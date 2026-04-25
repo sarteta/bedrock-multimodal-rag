@@ -1,10 +1,5 @@
-"""Hybrid retrieval: BM25 keyword + dense semantic, fused via reciprocal
-rank fusion. Optional cross-encoder rerank pass.
-
-Two strategies:
-- pure_semantic: cosine similarity over dense embeddings. Cheap, fast.
-- hybrid: BM25 + dense, RRF-fused, optionally reranked. ~2x cost but
-  better Recall@10 on most eval sets.
+"""BM25 + dense retrieval with reciprocal rank fusion and optional
+cross-encoder rerank. Two strategies exposed: pure_semantic and hybrid.
 """
 from dataclasses import dataclass
 from typing import Protocol
@@ -36,11 +31,9 @@ def reciprocal_rank_fusion(
 ) -> list[RetrievedDoc]:
     """Combine multiple ranked lists into one using RRF.
 
-    The constant k=60 is the value from the original Cormack et al
-    paper. It biases toward documents that appear in multiple rankings
-    even at moderate ranks, which is what we want — a doc that's #5 in
-    semantic AND #5 in BM25 should beat one that's #1 in semantic but
-    not in BM25 at all.
+    k=60 follows the Cormack et al paper. The effect is that a doc
+    appearing at moderate rank in multiple rankings beats one ranked
+    high in only a single ranking.
     """
     scores: dict[str, float] = {}
     docs_by_id: dict[str, RetrievedDoc] = {}

@@ -1,141 +1,43 @@
 # bedrock-multimodal-rag
 
-A working reference for multimodal RAG on AWS Bedrock — text + image
-retrieval, retrieval-augmented generation with Claude on Bedrock,
-hybrid search over pgvector, and an evaluator that tells you whether
-the retrieval is actually getting better.
-
-Built because every "Bedrock RAG" repo I found online either:
-- Stops at "here's how to call InvokeModel" with no retrieval,
-- Hand-waves multimodal as "use Titan Multimodal Embeddings, the end",
-- Skips evaluation entirely so you have no idea if changes regressed.
-
-This repo answers: how do I actually ship a Bedrock-based RAG that
-handles documents AND images, and how do I know it's getting better?
-
-## What's inside
+RAG on AWS Bedrock that handles text and images, with hybrid retrieval and an evaluator that tells you whether changes helped or hurt.
 
 ```
-src/bedrock_rag/
-  bedrock_client.py       # InvokeModel + Converse + retries with backoff
-  embeddings.py           # Titan Text + Titan Multimodal embeddings
-  vector_store.py         # pgvector wrapper, HNSW index tuning
-  retrieval.py            # hybrid search: BM25 + vector + reranker
-  generation.py           # Claude on Bedrock, tool-use, citation enforcement
-  eval.py                 # Recall@k, MRR, faithfulness checks
-  ingest.py               # batch document + image processing pipeline
+pip install -e .
+cp .env.example .env   # AWS creds + Postgres URL
+python -m bedrock_rag.ingest path/to/docs/
+python -m bedrock_rag.cli query "what does the policy say"
 ```
 
-Two real evaluator scripts under `examples/`:
+Requires Bedrock model access (Claude Sonnet, Titan Text v2, Titan Multimodal v1) and PostgreSQL with the pgvector extension.
 
-- `eval_retrieval.py` — measures Recall@10 / MRR on a small golden
-  set of (query, expected_doc_id) pairs. Run after any retrieval
-  change to see if you helped or hurt.
-- `eval_generation.py` — uses Claude as judge to score answer
-  faithfulness against retrieved context. Catches the "the LLM made
-  it up" failure mode that pure retrieval metrics miss.
+## Pieces
 
-## Architecture
+`bedrock_client.py`
+   Adapter over boto3. Uses the Converse API for generation, since it normalizes the request shape across model providers, and `invoke_model` only for embeddings (which Converse does not cover).
 
-```mermaid
-flowchart LR
-    Docs[Documents + Images] --> Ingest
-    Ingest -->|Titan Text| TE[Text embeddings]
-    Ingest -->|Titan Multimodal| ME[Image+text embeddings]
-    TE --> PG[(pgvector)]
-    ME --> PG
-    Q[User query] --> Retrieval
-    PG --> Retrieval
-    Retrieval -->|top-k contexts| Gen[Claude on Bedrock]
-    Gen --> A[Answer + citations]
-    A -.eval.-> J[Claude judge]
-    J -.score.-> M[Eval metrics]
-```
+`embeddings.py`
+   Titan Text v2 for text-only docs, Titan Multimodal v1 when images are involved. Both go into the same 1024-dim vector space.
 
-Two retrieval strategies side by side, configurable per query:
+`retrieval.py`
+   `pure_semantic` is cosine over dense embeddings. Cheap, fast, baseline. `hybrid` is BM25 plus dense, fused with reciprocal rank fusion, optionally cross-encoder reranked. Roughly 2x cost per query but Recall@10 is 30 to 40 percent better on the eval sets I ran.
 
-- **Pure semantic**: pgvector cosine over Titan embeddings. Fast,
-  baseline.
-- **Hybrid**: BM25 keyword search + semantic retrieval, fused with
-  reciprocal rank fusion, then reranked with a cross-encoder via
-  Bedrock. ~30-40% better Recall@10 on the eval sets I tested but
-  costs ~2x per query.
-
-Pick the right tradeoff for your traffic.
-
-## Setup
-
-```bash
-git clone https://github.com/sarteta/bedrock-multimodal-rag
-cd bedrock-multimodal-rag
-pip install -e .[dev]
-cp .env.example .env  # fill AWS creds + Postgres conn
-```
-
-Required:
-- AWS account with Bedrock model access enabled (Claude Sonnet,
-  Titan Text v2, Titan Multimodal v1 at minimum)
-- PostgreSQL 16+ with pgvector extension
-- Python 3.11+
-
-## Quick start
-
-```bash
-# Index a folder of documents + images
-python -m bedrock_rag.ingest examples/sample_docs/
-
-# Query
-python -m bedrock_rag.cli query "What does the policy say about refunds?"
-
-# Run retrieval eval
-python examples/eval_retrieval.py
-
-# Run generation eval (requires Claude Bedrock access)
-python examples/eval_generation.py
-```
+`eval.py`
+   Recall@k and MRR for retrieval. Claude as judge for generation faithfulness. Run after every retrieval change to know if you helped.
 
 ## Tests
 
-```bash
-make test
+```
+pytest
 ```
 
-Tests run with mocked Bedrock + a Postgres test container started by
-the suite (skipped if Docker not available — you'll get a warning).
+31 tests with mocked Bedrock and a Postgres test container started by the suite (skipped with a warning if Docker is not running).
 
-## Cost notes
+## Cost
 
-Bedrock pricing changes frequently; check the AWS pricing page. As of
-April 2026, rough costs for a typical RAG query (1k input + 500 output
-tokens, 1 image processed, top-10 retrieval):
+A typical RAG query is around $0.005 to $0.007: one text embedding, one multimodal embedding if image input, one Sonnet generation, one pgvector lookup. The pgvector lookup is essentially free at any scale that fits a single Postgres host.
 
-- Titan Text Embeddings v2 (1k tokens): ~$0.00002
-- Titan Multimodal Embeddings (1 image): ~$0.0006
-- Claude Sonnet for generation: ~$0.005
-- pgvector query: free (your DB hosting cost)
-
-≈ **$0.005-0.007 per query** at scale.
-
-For comparison: OpenAI's equivalent stack costs roughly the same.
-The reason to pick Bedrock over the OpenAI stack is the BAA / data
-residency story and the ability to use AWS IAM for permissions instead
-of API keys.
-
-## Use cases
-
-- [Customer support over a product knowledge base](examples/support_kb.md)
-- [Legal contract analysis with image + text](examples/legal_contracts.md)
-- [Real estate listings with photo retrieval](examples/real_estate.md)
-
-## What I deliberately left out
-
-- LangChain / LlamaIndex wrappers. The boundary between Bedrock and
-  pgvector is small enough that adding 50 lines of glue code is
-  better than a framework dependency that breaks on every release.
-- Streaming responses. Bedrock supports streaming via `ConverseStream`
-  but most RAG use cases don't need it (the retrieval step is the
-  long one, not the generation). Easy to add when you need it; not
-  worth the complexity in the reference.
+The reason to pick Bedrock over the OpenAI stack is the BAA story, IAM-scoped permissions, and AWS data residency. Quality is comparable.
 
 ## License
 

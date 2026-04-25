@@ -1,9 +1,5 @@
-"""Thin wrapper over boto3 Bedrock Runtime client with retries.
-
-Why a wrapper at all: boto3's bedrock-runtime client doesn't retry
-ThrottlingException by default, and Bedrock throttles aggressively
-when you exceed model TPM. Without retries, a slow burst hammers
-your throughput and produces noisy errors instead of just being slow.
+"""boto3 Bedrock Runtime adapter. Boto's default client does not retry
+ThrottlingException; Bedrock throttles often on TPM, so we add it.
 """
 import json
 from dataclasses import dataclass
@@ -38,12 +34,9 @@ class BedrockClient:
         system: str | None = None,
         max_tokens: int = 1000,
     ) -> BedrockResponse:
-        """Single-shot conversation turn via the Converse API.
-
-        Converse normalizes inputs across model providers (Claude, Titan,
-        Llama all use the same shape). InvokeModel requires per-provider
-        body schemas — Converse is strictly better unless you need a
-        provider-specific feature.
+        """One conversation turn via Converse. Converse normalizes the
+        request shape across providers (Claude, Titan, Llama). Use
+        InvokeModel only when you need a provider-specific feature.
         """
         request: dict[str, Any] = {
             "modelId": self.model_id,
@@ -80,11 +73,9 @@ class BedrockClient:
         text: str | None = None,
         image_bytes: bytes | None = None,
     ) -> list[float]:
-        """Titan Multimodal Embeddings v1.
-
-        Pass text-only, image-only, or both. Embedding dimension is 1024
-        regardless. Both modes use the same vector space, so a query
-        embedding can be either type.
+        """Titan Multimodal Embeddings v1. Text, image, or both. Output
+        is always 1024-dim and lives in the same vector space, so queries
+        can mix modalities.
         """
         if text is None and image_bytes is None:
             raise ValueError("must provide text or image")

@@ -81,7 +81,7 @@ def test_hybrid_calls_both_stores():
     out = hybrid("query text", [0.1] * 1024, sem_store, bm_store, k=2)
     assert sem_store.calls
     assert bm_store.calls
-    assert sem_store.calls[0][1] == 4  # k * 2 — over-retrieve before fusion
+    assert sem_store.calls[0][1] == 4  # k * 2 -- over-retrieve before fusion
 
 
 def test_hybrid_with_reranker():

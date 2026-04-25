@@ -6,7 +6,7 @@ from bedrock_rag.bedrock_client import BedrockClient
 
 
 def test_client_construction_does_not_call_aws():
-    """We should be able to construct without AWS creds — boto is lazy."""
+    """We should be able to construct without AWS creds -- boto is lazy."""
     c = BedrockClient(model_id="anthropic.claude-3-sonnet-20240229-v1:0")
     assert c.model_id == "anthropic.claude-3-sonnet-20240229-v1:0"
     assert c._client is None

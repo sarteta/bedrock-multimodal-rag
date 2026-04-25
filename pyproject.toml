@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "bedrock-multimodal-rag"
 version = "0.1.0"
-description = "Multimodal RAG on AWS Bedrock — text + image retrieval with pgvector and a real evaluator"
+description = "Multimodal RAG on AWS Bedrock -- text + image retrieval with pgvector and a real evaluator"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}

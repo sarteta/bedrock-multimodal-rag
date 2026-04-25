@@ -20,7 +20,7 @@ def test_recall_at_k_no_hit():
 
 
 def test_recall_at_k_outside_window():
-    # 'a' is at rank 5 but k=3 — should not count
+    # 'a' is at rank 5 but k=3 -- should not count
     assert recall_at_k(["x", "y", "z", "w", "a"], ["a"], k=3) == 0.0
 
 
@@ -41,7 +41,7 @@ def test_reciprocal_rank_no_match():
 
 
 def test_reciprocal_rank_uses_first_match():
-    # 'a' at rank 2, 'b' at rank 3 — should use rank 2 since 'a' comes first
+    # 'a' at rank 2, 'b' at rank 3 -- should use rank 2 since 'a' comes first
     assert reciprocal_rank(["x", "a", "b"], ["a", "b"]) == 0.5
 
 

@@ -1,10 +1,8 @@
 """Retrieval and generation evaluators.
 
-Retrieval metrics (Recall@k, MRR) are deterministic and cheap. Run
-them after every retrieval change.
-
-Generation metrics use an LLM-as-judge. More expensive and noisier;
-run on a smaller golden set, weekly or before releases.
+Retrieval metrics (Recall@k, MRR) are deterministic and cheap.
+Generation metrics use an LLM judge: more expensive, noisier, run
+weekly or before releases on a smaller set.
 """
 from dataclasses import dataclass
 
