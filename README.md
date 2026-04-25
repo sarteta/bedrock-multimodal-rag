@@ -2,6 +2,21 @@
 
 RAG on AWS Bedrock that handles text and images, with hybrid retrieval and an evaluator that tells you whether changes helped or hurt.
 
+```mermaid
+flowchart LR
+    Docs[Docs + Images] --> Ingest
+    Ingest -->|Titan Text| TE[Text embeddings]
+    Ingest -->|Titan Multimodal| ME[Multimodal embeddings]
+    TE --> PG[(pgvector)]
+    ME --> PG
+    Q[Query] --> Retrieval
+    PG --> Retrieval
+    Retrieval -->|top-k| Gen[Claude on Bedrock]
+    Gen --> A[Answer + citations]
+    A -.judge.-> J[Claude judge]
+    J -.score.-> M[Eval metrics]
+```
+
 ```
 pip install -e .
 cp .env.example .env   # AWS creds + Postgres URL
