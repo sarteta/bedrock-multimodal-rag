@@ -1,5 +1,6 @@
 # bedrock-multimodal-rag
 
+[![docker](https://github.com/sarteta/bedrock-multimodal-rag/actions/workflows/docker.yml/badge.svg)](https://github.com/sarteta/bedrock-multimodal-rag/actions/workflows/docker.yml)
 [![python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org)
 [![aws](https://img.shields.io/badge/aws-bedrock-orange)](https://aws.amazon.com/bedrock/)
 [![pgvector](https://img.shields.io/badge/postgres-pgvector-blue)](https://github.com/pgvector/pgvector)
