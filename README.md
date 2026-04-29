@@ -1,5 +1,10 @@
 # bedrock-multimodal-rag
 
+[![python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org)
+[![aws](https://img.shields.io/badge/aws-bedrock-orange)](https://aws.amazon.com/bedrock/)
+[![pgvector](https://img.shields.io/badge/postgres-pgvector-blue)](https://github.com/pgvector/pgvector)
+[![license](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
+
 RAG on AWS Bedrock that handles text and images, with hybrid retrieval and an evaluator that tells you whether changes helped or hurt.
 
 ```mermaid
@@ -17,7 +22,9 @@ flowchart LR
     J -.score.-> M[Eval metrics]
 ```
 
-```
+## Quick start
+
+```bash
 pip install -e .
 cp .env.example .env   # AWS creds + Postgres URL
 python -m bedrock_rag.ingest path/to/docs/
